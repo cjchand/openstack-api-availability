@@ -1,0 +1,5 @@
+---
+ - hosts: all
+
+   roles:
+    - os_api_availability

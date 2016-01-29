@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+#
+# Glance API monitoring script for Nagios
+#
+# Author:
+#   Rakesh Patnaik <patsrakesh@gmail.com>
+#
+# This file is part of nagios-openstack-monitoring
+# (https://github.com/rakesh-patnaik/nagios-openstack-monitoring)
+#
+# nagios-openstack-monitoring is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# nagios-openstack-monitoring is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with nagios-openstack-monitoring.  If not, see <http://www.gnu.org/licenses/>.>.
+#
+# Requirments: python-keystoneclient, python-argparse, python
+
+from keystoneclient.auth.identity import v2 as keystoneIdentity
+from keystoneclient import session as keystoneSession
+from glanceclient import Client as glanceClient
+from statsd import StatsClient
+
+# Populate variables from ../vars/main.yaml
+auth_url        = "{{ openstack.auth_url }}"
+username        = "{{ openstack.username }}"
+password        = "{{ openstack.password }}"
+region          = "{{ openstack.region }}"
+tenant          = "{{ openstack.tenant }}"
+req_count       =  {{ openstack.flavor_count }}
+version         =  {{ openstack.version }}
+glance_endpoint = "{{ openstack.glance_url }}"
+statsd_host  = "{{ metrics.statsd_host }}"
+statsd_port  =  {{ metrics.statsd_port }}
+statsd_prefix ="{{ metrics.statsd_prefix }}" + "glance"
+
+try:
+    # Glanceclient is in that it requires a token and won't allow basic auth like the rest of the OS clients
+    auth = keystoneIdentity.Password(auth_url=auth_url,
+                                     username=username,
+                                     password=password,
+                                     tenant_name=tenant)
+    session = keystoneSession.Session(auth=auth)
+    token = auth.get_token(session)
+    statsd_client = StatsClient(host=statsd_host, port=statsd_port, prefix=statsd_prefix)
+    glance_api_timer = statsd_client.timer('response_time')
+    glance_api_timer.start()
+    glance_client = glanceClient(endpoint=glance_endpoint, token=token)
+    glance_api_timer.stop()
+    image_count = 0
+    image_list = glance_client.images.list()
+    while True:
+        try:
+            image = image_list.next()
+            image_count += 1
+        except StopIteration:
+            break
+    if req_count and image_count < int(req_count):
+        print "CRITICAL: %d images found less than required %d" % (image_count, int(req_count))
+        statsd_client.incr('result.fail')
+
+    if req_count:
+        print "OK: Retrieved %d images, required %d" % (image_count, int(req_count))
+        statsd_client.incr('result.pass')
+    else:
+        print "OK: Retrieved %d images" % (image_count)
+        statsd_client.incr('result.pass')
+
+except Exception as e:
+    print e
+    print 'CRITICAL: Failed to retrieve images for tenant %s and user %s' % (tenant, username)
+    statsd_client.incr('result.fail')

@@ -1,0 +1,70 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+#
+# Heat API monitoring script for Nagios
+#
+# Authors:
+#   Rakesh Patnaik <patsrakesh@gmail.com>
+#
+# This file is part of nagios-openstack-monitoring
+# (https://github.com/rakesh-patnaik/nagios-openstack-monitoring)
+#
+# nagios-openstack-monitoring is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# nagios-openstack-monitoring is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with nagios-openstack-monitoring.  If not, see <http://www.gnu.org/licenses/>.>.
+#
+# Requirments: python-keystoneclient, python-argparse, python
+
+from keystoneclient.auth.identity import v2 as keystoneIdentity
+from keystoneclient import session
+from heatclient.client import Client
+
+# Populate variables from ../vars/main.yaml
+auth_url      = "{{ openstack.auth_url }}"
+username      = "{{ openstack.username }}"
+password      = "{{ openstack.password }}"
+region        = "{{ openstack.region }}"
+tenant        = "{{ openstack.tenant }}"
+req_count     =  {{ openstack.flavor_count }}
+verify        =  {{ openstack.insecure }}
+version       =  {{ openstack.version }}
+heat_endpoint = "{{ openstack.heat_url }}"
+
+try:
+    # Heatclient requires a token and won't allow basic auth like the rest of the OS clients
+    auth = keystoneIdentity.Password(auth_url=auth_url,
+                                     username=username,
+                                     password=password,
+                                     tenant_name=tenant)
+    session = session.Session(auth=auth)
+    token = auth.get_token(session)
+    heat_client = Client('1',endpoint=heat_endpoint, token=token)
+    stack_count = 0
+    stack_list = heat_client.stacks.list()
+    while True:
+        try:
+            stack = stack_list.next()
+            stack_count += 1
+        except StopIteration:
+            break
+
+    if req_count and stack_count < int(req_count):
+        print "CRITICAL: Number of stacks found: %d less than required %d" % (stack_count, int(req_count))
+
+    if req_count:
+        print "OK: Retrieved %d stacks, required %d" % (stack_count, int(req_count))
+    else:
+        print "OK: Retrieved stacks. Stack count is %d" % (stack_count)
+
+except Exception as e:
+    print e
+    print 'CRITICAL: Unable to retrieve stacks for tenant %s: %s' % (tenant, e)

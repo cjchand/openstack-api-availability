@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+#
+# {{ ansible_managed }}
+#
+# Neutron API monitoring script
+#
+# Author:
+#   Chris Chandler <cjchand@gmail.com>
+# 
+
+from neutronclient.v2_0 import client
+from statsd import StatsClient
+
+# Populate variables from ../vars/main.yaml
+auth_url     = "{{ openstack.auth_url }}"
+username     = "{{ openstack.username }}"
+password     = "{{ openstack.password }}"
+region       = "{{ openstack.region }}"
+tenant       = "{{ openstack.tenant }}"
+req_count    =  {{ openstack.flavor_count }}
+version      =  {{ openstack.version }}
+statsd_host  = "{{ metrics.statsd_host }}"
+statsd_port  =  {{ metrics.statsd_port }}
+statsd_prefix ="{{ metrics.statsd_prefix }}" + "neutron"
+
+try:
+    statsd_client = StatsClient(host=statsd_host, port=statsd_port, prefix=statsd_prefix)
+    neutron_api_timer = statsd_client.timer('response_time')
+    neutron_api_timer.start()
+    neutron_client = client.Client(username=username, password=password, tenant_name=tenant, auth_url=auth_url)
+    neutron_api_timer.stop()
+    net_count = 0
+    net_list = neutron_client.list_networks()
+    for net in net_list:
+        net_count += 1
+    if req_count and net_count < int(req_count):
+        print "CRITICAL: %d networks found less than required %d" % (net_count, int(req_count)) 
+        statsd_client.incr('result.fail')
+ 
+    if req_count: 
+        print "OK: Retrieved %d networks, required %d" % (net_count, int(req_count))
+        statsd_client.incr('result.pass')
+    else:
+        print "OK: Retrieved %d networks" % (net_count)
+        statsd_client.incr('result.pass')
+
+except Exception as e:
+    print 'CRITICAL: Failed to retrieve networks for tenant %s and user %s' % (tenant, username) 
+    statsd_client.incr('result.fail')
+
+# {{ ansible_managed }}

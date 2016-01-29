@@ -1,0 +1,19 @@
+---
+
+openstack:
+  auth_url        : "https://my-openstack-cloud:5000/v2.0/"
+  username        : "test-user"
+  password        : "test-password"
+  region          : "test-region"
+  tenant          : "test-tenant"
+  insecure        : True
+  flavor_count    : 1
+  container_name  : test_container
+  version         : 2
+  glance_url      : "https://my-openstack-cloud:9292/v2"
+  heat_url        : "https://my-openstack-cloud:8004/v2"
+
+metrics:
+  statsd_host     : "10.0.10.20"
+  statsd_port     : 8125
+  statsd_prefix   : "openstack.api."

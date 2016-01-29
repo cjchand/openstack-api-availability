@@ -1,0 +1,20 @@
+---
+
+- name: ensure /opt/openstack-api-availability directory exists
+  file: path=/opt/openstack-api-availability state=directory
+
+- name: deploy scripts to query APIs
+  template: dest=/opt/openstack-api-availability/{{ item }} src={{ item }}.j2 mode=0755
+  with_items:
+    - check_nova_api.py
+    - check_swift_api.py
+    - check_glance_api.py
+    - check_cinder_api.py
+    - check_heat_api.py
+    - check_neutron_api.py
+
+- name: ensure that /var/log/openstack-api-availability is present
+  file: path=/var/log/openstack-api-availability state=directory mode=0755 owner=vagrant group=vagrant
+
+- name: deploy cron job
+  copy: src=openstack-api-availability dest=/etc/cron.d/openstack-api-availability mode=0644
