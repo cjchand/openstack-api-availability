@@ -37,6 +37,7 @@ Todo's include:
 4. Watch the wall of text as packages and pip modules are installed, and so on
 5. Once done, type `vagrant ssh` to access the VM
 6. The scripts live in `/opt/openstack-api-availability` and will be run by a cron job as soon as the server is up
+7. (Optional) If you want to change the code, automation, or variables, make those changes, then type `vagrant provision` to push them to the Vagrantbox
 
 # Limitations/Sub-optimals
 
