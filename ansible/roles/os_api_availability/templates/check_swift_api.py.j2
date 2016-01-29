@@ -1,30 +1,15 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 #
-# Swift API monitoring script for Nagios
+# Swift API availability and performance script
 #
 # Authors:
-#   Rakesh Patnaik <patsrakesh@gmail.com>
-#
-# This file is part of nagios-openstack-monitoring
-# (https://github.com/rakesh-patnaik/nagios-openstack-monitoring)
-#
-# nagios-openstack-monitoring is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# nagios-openstack-monitoring is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with nagios-openstack-monitoring.  If not, see <http://www.gnu.org/licenses/>.>.
+#   Chris Chandler <cjchand@gmail.com>
 #
 
 from swiftclient import client
 from statsd import StatsClient
+import logging
 
 # Populate variables from ../vars/main.yaml
 auth_url       = "{{ openstack.auth_url }}"
@@ -34,26 +19,30 @@ region         = "{{ openstack.region }}"
 tenant         = "{{ openstack.tenant }}"
 container_name = "{{ openstack.container_name }}"
 verify         =  {{ openstack.insecure }}
-statsd_host  = "{{ metrics.statsd_host }}"
-statsd_port  =  {{ metrics.statsd_port }}
+statsd_host    = "{{ metrics.statsd_host }}"
+statsd_port    =  {{ metrics.statsd_port }}
 statsd_prefix  = "{{ metrics.statsd_prefix }}" + "swift"
 
+statsd_client = StatsClient(host=statsd_host, port=statsd_port, prefix=statsd_prefix)
+logging.basicConfig(level=logging.INFO,
+                        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                        filename='/var/log/openstack-api-availability/check_swift_api.log')
+
 try:
-    statsd_client = StatsClient(host=statsd_host, port=statsd_port, prefix=statsd_prefix)
     swift_api_timer = statsd_client.timer('response_time')
-    swift_api_timer.start()
     swift_client = client.Connection(user=username,key=password,tenant_name=tenant,authurl=auth_url,auth_version='2.0')
-    swift_api_timer.stop()
+    swift_api_timer.start()
     swift_account = swift_client.get_account()
+    swift_api_timer.stop()
 
     if swift_account and len(swift_account[1]) > 0:
-        print 'OK: Got Swift account info for %s' % (tenant)
+        logging.info('OK: Got Swift account info for %s' % (tenant))
         statsd_client.incr('result.pass')
     else:
-        print 'Unable to get information for tenant %s' (tenant)
+        logging.info('Unable to get information for tenant %s' (tenant))
         statsd_client.incr('result.fail')
 
 except Exception as e:
-    print e
-    print 'CRITICAL: Failed to get container for tenant %s and user %s' % (tenant, username)
+    logging.info(e)
+    logging.info('CRITICAL: Failed to get container for tenant %s and user %s' % (tenant, username))
     statsd_client.incr('result.fail')

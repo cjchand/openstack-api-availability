@@ -1,66 +1,52 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 #
-# Cinder API monitoring script for Nagios
+# Cinder API availability and performance script
 #
-# Authors:
-#   Rakesh Patnaik <patsrakesh@gmail.com>
-#
-# This file is part of nagios-openstack-monitoring
-# (https://github.com/rakesh-patnaik/nagios-openstack-monitoring)
-#
-# nagios-openstack-monitoring is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# nagios-openstack-monitoring is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with nagios-openstack-monitoring.  If not, see <http://www.gnu.org/licenses/>.>.
-#
-# Requirments: python-keystoneclient, python-argparse, python
+# Author:
+#   Chris Chandler <cjchand@gmail.com>
 
 from cinderclient import client
 from statsd import StatsClient
+import logging
 
 # Populate variables from ../vars/main.yaml
-auth_url     = "{{ openstack.auth_url }}"
-username     = "{{ openstack.username }}"
-password     = "{{ openstack.password }}"
-region       = "{{ openstack.region }}"
-tenant       = "{{ openstack.tenant }}"
-req_count    =  {{ openstack.flavor_count }}
-version      =  {{ openstack.version }}
-statsd_host  = "{{ metrics.statsd_host }}"
-statsd_port  =  {{ metrics.statsd_port }}
-statsd_prefix ="{{ metrics.statsd_prefix }}" + "cinder"
+auth_url      = "{{ openstack.auth_url }}"
+username      = "{{ openstack.username }}"
+password      = "{{ openstack.password }}"
+region        = "{{ openstack.region }}"
+tenant        = "{{ openstack.tenant }}"
+req_count     =  {{ openstack.flavor_count }}
+version       =  {{ openstack.version }}
+statsd_host   = "{{ metrics.statsd_host }}"
+statsd_port   =  {{ metrics.statsd_port }}
+statsd_prefix = "{{ metrics.statsd_prefix }}" + "cinder"
 
+statsd_client = StatsClient(host=statsd_host, port=statsd_port, prefix=statsd_prefix)
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                    filename='/var/log/openstack-api-availability/check_cinder_api.log')
 try:
-   statsd_client = StatsClient(host=statsd_host, port=statsd_port, prefix=statsd_prefix)
-   cinder_api_timer = statsd_client.timer('response_time')
-   cinder_api_timer.start()
-   cinder_client = client.Client(int(version), username, password, tenant, auth_url)
-   cinder_api_timer.stop()
-   volume_count = 0
-   volume_list = cinder_client.volumes.list()
-   for volume in volume_list:
-   	volume_count += 1
-   
-   if req_count and volume_count < int(req_count):
-   	print "CRITICAL: Number of volumes found: %d less than required %d" % (volume_count, int(req_count)) 
+    cinder_api_timer = statsd_client.timer('response_time')
+    cinder_client = client.Client(int(version), username, password, tenant, auth_url)
+    volume_count = 0
+    cinder_api_timer.start()
+    volume_list = cinder_client.volumes.list()
+    cinder_api_timer.stop()
+    for volume in volume_list:
+        volume_count += 1
+
+    if req_count and volume_count < int(req_count):
+        logging.info("CRITICAL: Number of volumes found: %d less than required %d" % (volume_count, int(req_count)))
         statsd_client.incr('result.fail')
-   
-   if req_count: 
-   	print "OK: Retrieved %d volumes, required %d" % (volume_count, int(req_count))
+
+    if req_count: 
+        logging.info("OK: Retrieved %d volumes, required %d" % (volume_count, int(req_count)))
         statsd_client.incr('result.pass')
-   else:
-   	print "OK: Retrieved volumes. Volume count is %d" % (volume_count)
+    else:
+        logging.info("OK: Retrieved volumes. Volume count is %d" % (volume_count))
         statsd_client.incr('result.pass')
 
 except Exception as e:
-   print 'CRITICAL:Unable to retrieve volumes for tenant %s' % (tenant)
-   statsd_client.incr('result.fail')
+    logging.info("CRITICAL:Unable to retrieve volumes for tenant %s" % (tenant))
+    statsd_client.incr('result.fail')

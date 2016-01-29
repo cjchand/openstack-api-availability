@@ -3,7 +3,7 @@
 #
 # {{ ansible_managed }}
 #
-# Nova API monitoring script
+# Nova API availability and response time script
 #
 # Author:
 #   Chris Chandler <cjchand@gmail.com>
@@ -11,44 +11,48 @@
 
 from novaclient import client
 from statsd import StatsClient
+import logging
 
 # Populate variables from ../vars/main.yaml
-auth_url     = "{{ openstack.auth_url }}"
-username     = "{{ openstack.username }}"
-password     = "{{ openstack.password }}"
-region       = "{{ openstack.region }}"
-tenant       = "{{ openstack.tenant }}"
-req_count    =  {{ openstack.flavor_count }}
-verify       =  {{ openstack.insecure }}
-version      =  {{ openstack.version }}
-statsd_host  = "{{ metrics.statsd_host }}"
-statsd_port  =  {{ metrics.statsd_port }}
+auth_url      = "{{ openstack.auth_url }}"
+username      = "{{ openstack.username }}"
+password      = "{{ openstack.password }}"
+region        = "{{ openstack.region }}"
+tenant        = "{{ openstack.tenant }}"
+req_count     =  {{ openstack.flavor_count }}
+verify        =  {{ openstack.insecure }}
+version       =  {{ openstack.version }}
+statsd_host   = "{{ metrics.statsd_host }}"
+statsd_port   =  {{ metrics.statsd_port }}
 statsd_prefix ="{{ metrics.statsd_prefix }}" + "nova"
 
+statsd_client = StatsClient(host=statsd_host, port=statsd_port, prefix=statsd_prefix)
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                    filename='/var/log/openstack-api-availability/check_nova_api.log')
+
 try:
-    statsd_client = StatsClient(host=statsd_host, port=statsd_port, prefix=statsd_prefix)
     nova_api_timer = statsd_client.timer('response_time')
-    nova_api_timer.start() 
     nova_client = client.Client(int(version), username, password, tenant, auth_url)
-    nova_api_timer.stop()
     flavor_count = 0
+    nova_api_timer.start()
     flavor_list = nova_client.flavors.list()
+    nova_api_timer.stop()
     for flavor in flavor_list:
         flavor_count += 1
     if req_count and flavor_count < int(req_count):
-        print "CRITICAL: %d flavors found less than required %d" % (flavor_count, int(req_count)) 
+        logging.info("CRITICAL: %d flavors found less than required %d" % (flavor_count, int(req_count)))
         statsd_client.incr('result.fail')
  
     if req_count: 
-        print "OK: Retrieved %d flavors, required %d" % (flavor_count, int(req_count))
+        logging.info("OK: Retrieved %d flavors, required %d" % (flavor_count, int(req_count)))
         statsd_client.incr('result.pass')
     else:
-        print "OK: Retrieved %d flavors" % (flavor_count)
+        logging.info("OK: Retrieved %d flavors" % (flavor_count))
         statsd_client.incr('result.pass')
 
-
 except Exception as e:
-    print 'CRITICAL: Failed to retrieve flavors for tenant %s and user %s' % (tenant, username) 
+    logging.info('CRITICAL: Failed to retrieve flavors for tenant %s and user %s' % (tenant, username))
     statsd_client.incr('result.fail')
 
 # {{ ansible_managed }}

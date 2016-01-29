@@ -1,7 +1,7 @@
 # cron job to run the OpenStack API availability scripts
 # Source: https://github.com/cjchand/openstack-api-availability
-* * * * *  vagrant  python /opt/openstack-api-availability/check_nova_api.py >>/var/log/openstack-api-availability/check_nova_api.log 2>&1
-* * * * *  vagrant  python /opt/openstack-api-availability/check_swift_api.py >>/var/log/openstack-api-availability/check_swift_api.log 2>&1
-* * * * *  vagrant  python /opt/openstack-api-availability/check_cinder_api.py >>/var/log/openstack-api-availability/check_cinder_api.log 2>&1
-* * * * *  vagrant  python /opt/openstack-api-availability/check_glance_api.py >>/var/log/openstack-api-availability/check_glance_api.log 2>&1
-* * * * *  vagrant  python /opt/openstack-api-availability/check_neutron_api.py >>/var/log/openstack-api-availability/check_neutron_api.log 2>&1
+* * * * *  vagrant  python /opt/openstack-api-availability/check_nova_api.py  2>&1
+* * * * *  vagrant  python /opt/openstack-api-availability/check_swift_api.py 2>&1
+* * * * *  vagrant  python /opt/openstack-api-availability/check_cinder_api.py 2>&1
+* * * * *  vagrant  python /opt/openstack-api-availability/check_glance_api.py 2>&1
+* * * * *  vagrant  python /opt/openstack-api-availability/check_neutron_api.py 2>&1

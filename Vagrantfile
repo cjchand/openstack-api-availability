@@ -69,7 +69,7 @@ Vagrant.configure(2) do |config|
     sudo yum -y install epel-release
     # sudo yum -y update
     sudo yum install -y curl wget vim python python-pip python-devel
-    sudo pip install python-keystoneclient python-novaclient python-neutronclient python-swiftclient python-glanceclient python-heatclient statsd
+    sudo pip install python-keystoneclient python-novaclient python-neutronclient python-swiftclient python-glanceclient python-heatclient statsd logger
   SHELL
 
   config.vm.provision "ansible" do |ansible|

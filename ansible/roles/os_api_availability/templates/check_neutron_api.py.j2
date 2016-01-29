@@ -3,7 +3,7 @@
 #
 # {{ ansible_managed }}
 #
-# Neutron API monitoring script
+# Neutron API availability and performance script
 #
 # Author:
 #   Chris Chandler <cjchand@gmail.com>
@@ -11,6 +11,7 @@
 
 from neutronclient.v2_0 import client
 from statsd import StatsClient
+import logging
 
 # Populate variables from ../vars/main.yaml
 auth_url     = "{{ openstack.auth_url }}"
@@ -24,29 +25,33 @@ statsd_host  = "{{ metrics.statsd_host }}"
 statsd_port  =  {{ metrics.statsd_port }}
 statsd_prefix ="{{ metrics.statsd_prefix }}" + "neutron"
 
+statsd_client = StatsClient(host=statsd_host, port=statsd_port, prefix=statsd_prefix)
+logging.basicConfig(level=logging.INFO,
+                    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                    filename='/var/log/openstack-api-availability/check_neutron_api.log')
+
 try:
-    statsd_client = StatsClient(host=statsd_host, port=statsd_port, prefix=statsd_prefix)
     neutron_api_timer = statsd_client.timer('response_time')
-    neutron_api_timer.start()
     neutron_client = client.Client(username=username, password=password, tenant_name=tenant, auth_url=auth_url)
-    neutron_api_timer.stop()
     net_count = 0
+    neutron_api_timer.start()
     net_list = neutron_client.list_networks()
+    neutron_api_timer.stop()
     for net in net_list:
         net_count += 1
     if req_count and net_count < int(req_count):
-        print "CRITICAL: %d networks found less than required %d" % (net_count, int(req_count)) 
+        logging.info("CRITICAL: %d networks found less than required %d" % (net_count, int(req_count)))
         statsd_client.incr('result.fail')
  
     if req_count: 
-        print "OK: Retrieved %d networks, required %d" % (net_count, int(req_count))
+        logging.info("OK: Retrieved %d networks, required %d" % (net_count, int(req_count)))
         statsd_client.incr('result.pass')
     else:
-        print "OK: Retrieved %d networks" % (net_count)
+        logging.info("OK: Retrieved %d networks" % (net_count))
         statsd_client.incr('result.pass')
 
 except Exception as e:
-    print 'CRITICAL: Failed to retrieve networks for tenant %s and user %s' % (tenant, username) 
+    logging.info('CRITICAL: Failed to retrieve networks for tenant %s and user %s' % (tenant, username))
     statsd_client.incr('result.fail')
 
 # {{ ansible_managed }}
