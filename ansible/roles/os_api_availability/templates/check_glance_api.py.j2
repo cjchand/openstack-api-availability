@@ -39,7 +39,7 @@ try:
     session = keystoneSession.Session(auth=auth)
     token = auth.get_token(session)
     glance_api_timer = statsd_client.timer('response_time')
-    glance_client = glanceClient(endpoint=glance_endpoint, token=token)
+    glance_client = glanceClient('1', endpoint=glance_endpoint, token=token)
     image_count = 0
     glance_api_timer.start()
     image_list = glance_client.images.list()

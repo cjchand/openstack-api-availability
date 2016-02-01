@@ -41,7 +41,7 @@ Todo's include:
 
 # Limitations/Sub-optimals
 
-This is just an MVP at this point, so it comes with come caveats that aren't in the Todo section:
+This is just an MVP at this point, so it comes with some caveats that aren't in the Todo section:
 
 * Ansible is built for CentOS/RHEL7; no Debian-based automation at this time and might not work seamlessly on prior Fedora-based OS'
 * No log rotation

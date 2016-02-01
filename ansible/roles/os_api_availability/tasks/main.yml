@@ -1,5 +1,26 @@
 ---
 
+- name: Install required packages
+  yum: name={{ item }} state=present
+  with_items:
+    - curl
+    - wget
+    - vim
+    - python
+    - python-pip
+    - python-keystoneclient
+    - python-novaclient
+    - python-glanceclient
+    - python-swiftclient
+    - python-cinderclient
+    - python-neutronclient
+
+- name: pip install OpenStack clients and other Python requirements
+  pip: name={{ item }}
+  with_items:
+    - statsd
+    - logger
+
 - name: ensure /opt/openstack-api-availability directory exists
   file: path=/opt/openstack-api-availability state=directory
 
@@ -13,8 +34,14 @@
     - check_heat_api.py
     - check_neutron_api.py
 
+- name: create a new group that we will add our cron user to
+  group: name=osapi state=present
+
+- name: add a new user to the osapi group
+  user: name=osapi state=present group=osapi
+
 - name: ensure that /var/log/openstack-api-availability is present
-  file: path=/var/log/openstack-api-availability state=directory mode=0755 owner=vagrant group=vagrant
+  file: path=/var/log/openstack-api-availability state=directory mode=0755 owner=osapi group=osapi
 
 - name: deploy cron job
   copy: src=openstack-api-availability dest=/etc/cron.d/openstack-api-availability mode=0644
