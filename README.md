@@ -42,10 +42,9 @@ Todo's include:
 # To use with provided Ansible against any server:
 1. Clone the repo: `git clone git@github.com:cjchand/openstack-api-availability.git`
 2. cd to the repo and review the settings in `ansible/roles/os\_api\_availability/vars/main.yml`. There are settings for things like:
-
-        * statsd server, port, and metric prefix
-        * OpenStack URLs (e.g.: auth)
-        * Test user credentials, tenant, etc
+	* statsd server, port, and metric prefix
+	* OpenStack URLs (e.g.: auth)
+	* Test user credentials, tenant, etc
 3. Depending on which works best in your environment, either leave the os\_package\_source var in playbook.yml as "pip" to use Pip to install the modules or "yum" to yum install them. Note that the yum install method assumes you have already added a repo with the required OpenStack python-XXXXclient packages.
 4. If you have an existing playbook, you can likely just drop the existing role into your automation, but make sure you set that pip vs yum var somewhere.
 5. To run the Ansible straight from this repo:
