@@ -1,5 +1,5 @@
 ---
- - hosts: all
+ - hosts: os-api-metrics
    vars:
     os_package_source: pip
 

@@ -39,6 +39,19 @@ Todo's include:
 6. The scripts live in `/opt/openstack-api-availability` and will be run by a cron job as soon as the server is up
 7. (Optional) If you want to change the code, automation, or variables, make those changes, then type `vagrant provision` to push them to the Vagrantbox
 
+# To use with provided Ansible against any server:
+1. Clone the repo: `git clone git@github.com:cjchand/openstack-api-availability.git`
+2. cd to the repo and review the settings in `ansible/roles/os\_api\_availability/vars/main.yml`. There are settings for things like:
+        * statsd server, port, and metric prefix
+        * OpenStack URLs (e.g.: auth)
+        * Test user credentials, tenant, etc
+3. Depending on which works best in your environment, either leave the os\_package\_source var in playbook.yml as "pip" to use Pip to install the modules or "yum" to yum install them. Note that the yum install method assumes you have already added a repo with the required OpenStack python-XXXXclient packages.
+4. If you have an existing playbook, you can likely just drop the existing role into your automation, but make sure you set that pip vs yum var somewhere.
+5. To run the Ansible straight from this repo:
+	1. Modify the ansible/inventory file to point to the hostname of the server(s) you want to run the Ansible against (Note: These need to be resolvable from whereever you trigger the Ansible)
+	2. Run: `ansible-playbook -i ansible/inventory ansible/playbook.yml`
+
+
 # Limitations/Sub-optimals
 
 This is just an MVP at this point, so it comes with some caveats that aren't in the Todo section:
@@ -47,6 +60,7 @@ This is just an MVP at this point, so it comes with some caveats that aren't in 
 * No log rotation
 * No timestamps in the logs (yet, will get this soon)
 * Very little defensive code
+* Regarding the pip vs yum config: I opted to not drop one in so it does not potentially interfere with whatever packages your setup uses. Perhaps I'll add another flag and var for that, but trying to keep this simple for now.
 * Some of the tests are - to be brutally honest - a bit lame:
 	* Swift: While it exercises the API to a certain extent, the Swift test only gets the info for the account (which does indeed include info on any containers owned by this tenant)
 	* These are intentionally read-only for now, as I have seen that OpenStack can suffer a bit from DB bloat if your're doing CRUD 24/7
