@@ -1,5 +1,7 @@
 ---
  - hosts: all
+   vars:
+    os_package_source: pip
 
    roles:
     - os_api_availability

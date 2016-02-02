@@ -8,12 +8,32 @@
     - vim
     - python
     - python-pip
-    - python-keystoneclient
+
+- name: yum install OpenStack clients
+  yum: name={{ item }} state=present
+  with_items:
     - python-novaclient
     - python-glanceclient
     - python-swiftclient
     - python-cinderclient
     - python-neutronclient
+    - python-keystoneclient
+  when: os_package_source == "yum"
+
+- name: yum install python-devel when OpenStack clients are pip installed
+  yum: name=python-devel state=present
+  when: os_package_source == "pip"
+
+- name: pip install OpenStack clients
+  pip: name={{ item }}
+  with_items:
+    - python-novaclient
+    - python-glanceclient
+    - python-swiftclient
+    - python-cinderclient
+    - python-neutronclient
+    - python-keystoneclient
+  when: os_package_source == "pip"
 
 - name: pip install OpenStack clients and other Python requirements
   pip: name={{ item }}
