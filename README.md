@@ -42,7 +42,6 @@ Todo's include:
 # To use with provided Ansible against any server:
 1. Clone the repo: `git clone git@github.com:cjchand/openstack-api-availability.git`
 2. cd to the repo and review the settings in `ansible/roles/os\_api\_availability/vars/main.yml`. There are settings for things like:
-
         * statsd server, port, and metric prefix
         * OpenStack URLs (e.g.: auth)
         * Test user credentials, tenant, etc
